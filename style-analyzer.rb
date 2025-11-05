@@ -138,15 +138,27 @@ class CampfireStyleAnalyzer
   def scan_file(file_path)
     return unless File.exist?(file_path)
 
-    content = File.read(file_path)
-    lines = content.lines
+    begin
+      content = File.read(file_path, encoding: 'UTF-8')
+    rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+      # Try with binary encoding if UTF-8 fails
+      content = File.read(file_path, encoding: 'BINARY').force_encoding('UTF-8')
+      content = content.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+    end
 
+    lines = content.lines
     @summary[:total_lines] += lines.size
     @files_scanned += 1
 
     PATTERNS.each do |pattern_key, pattern|
-      good_count = content.scan(/#{pattern[:good]}/).size
-      bad_count = content.scan(/#{pattern[:bad]}/).size
+      begin
+        good_count = content.scan(/#{pattern[:good]}/).size
+        bad_count = content.scan(/#{pattern[:bad]}/).size
+      rescue RegexpError => e
+        # Skip patterns that cause regex errors
+        good_count = 0
+        bad_count = 0
+      end
 
       @results[pattern_key] ||= { good: 0, bad: 0, files: [] }
       @results[pattern_key][:good] += good_count
@@ -310,7 +322,7 @@ class CampfireStyleAnalyzer
   def generate_report
     report = {
       version: VERSION,
-      timestamp: Time.now.iso8601,
+      timestamp: Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
       analyzed_path: @path,
       summary: @summary,
       violations: @violations.map { |v|
