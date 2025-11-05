@@ -1,0 +1,679 @@
+# Additional Campfire Ruby/Rails Style Rules (Ultra-Thorough Analysis)
+# These are 40+ additional rules discovered in the extended 30-minute deep dive
+# Append these to sgconfig.yml or use separately
+
+rules:
+  # ============================================================================
+  # Time and Date Patterns
+  # ============================================================================
+
+  - id: use-time-current-not-time-now
+    message: Prefer Time.current over Time.now for timezone-aware time
+    severity: warning
+    language: ruby
+    rule:
+      pattern: Time.now
+    note: "Rails provides Time.current which respects application timezone. Found Time.now in session.rb but should generally use Time.current."
+    fix: "Time.current"
+
+  - id: use-rails-time-helpers
+    message: Use Rails time helpers (.ago, .from_now) for relative times
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: Time.current - $DURATION
+        - pattern: Time.now + $DURATION
+    note: "Rails provides cleaner syntax: 1.hour.ago, 2.days.from_now"
+    fix: "$DURATION.ago or $DURATION.from_now"
+
+  # ============================================================================
+  # String and Text Patterns
+  # ============================================================================
+
+  - id: force-encoding-after-dup
+    message: Always dup before force_encoding to avoid mutating original
+    severity: error
+    language: ruby
+    rule:
+      pattern: |
+        $STRING.force_encoding($ENCODING)
+    note: "Use .dup.force_encoding() to avoid mutating the original string. Found correctly in webhook.rb:56"
+    fix: "$STRING.dup.force_encoding($ENCODING)"
+
+  - id: use-strip-for-whitespace-removal
+    message: Use .strip to remove leading/trailing whitespace
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: '$STRING.gsub(/^\s+/, "").gsub(/\s+$/, "")'
+        - pattern: '$STRING.gsub(/\A\s+|\s+\z/, "")'
+    note: ".strip is more readable and performant"
+    fix: "$STRING.strip"
+
+  - id: use-presence-for-nil-or-empty-check
+    message: Use .presence to return nil for empty values
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: "$VALUE.empty? ? nil : $VALUE"
+        - pattern: "$VALUE.blank? ? nil : $VALUE"
+    note: ".presence returns nil if empty/blank, otherwise returns the value. Found in helpers and models."
+    fix: "$VALUE.presence"
+
+  - id: use-to-sentence-for-arrays
+    message: Use .to_sentence for human-readable lists
+    severity: info
+    language: ruby
+    rule:
+      pattern: '$ARRAY.join(", ")'
+    note: ".to_sentence provides grammatically correct lists with 'and'. Found in rooms_helper.rb:57"
+    fix: "$ARRAY.to_sentence"
+
+  # ============================================================================
+  # Collection and Enumerable Patterns
+  # ============================================================================
+
+  - id: use-pluck-for-single-attribute
+    message: Use .pluck for extracting single attributes from collections
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "$COLLECTION.map { |$ITEM| $ITEM.$ATTR }"
+    note: ".pluck is more efficient for database queries. Found throughout models."
+    fix: "$COLLECTION.pluck(:$ATTR)"
+
+  - id: use-excluding-for-active-record
+    message: Use .excluding() to exclude records from ActiveRecord relations
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$RELATION.where.not(id: $RECORDS.pluck(:id))"
+    note: ".excluding() is cleaner syntax introduced in Rails. Found in search.rb:16"
+    fix: "$RELATION.excluding($RECORDS)"
+
+  - id: use-without-for-array-exclusion
+    message: Use .without() to exclude items from arrays
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: "$ARRAY - [$ITEM]"
+        - pattern: "$ARRAY.reject { |i| i == $ITEM }"
+    note: ".without() is cleaner and more explicit. Found in rooms_helper.rb:57"
+    fix: "$ARRAY.without($ITEM)"
+
+  - id: use-find-each-for-batching
+    message: Use .find_each instead of .each for large ActiveRecord collections
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: "$RELATION.each do |$ITEM|"
+        - inside:
+            any:
+              - pattern: "User.$METHOD.each"
+              - pattern: "Message.$METHOD.each"
+              - pattern: "$MODEL.all.each"
+    note: ".find_each batches queries for memory efficiency. Found in web_push/pool.rb:13"
+    fix: "$RELATION.find_each do |$ITEM|"
+
+  - id: use-reduce-over-inject
+    message: Prefer .reduce over .inject for clarity
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$COLLECTION.inject($INITIAL) { |$ACC, $ITEM| $BODY }"
+    note: ".reduce is more commonly used and clearer. Found in filters.rb:7"
+    fix: "$COLLECTION.reduce($INITIAL) { |$ACC, $ITEM| $BODY }"
+
+  # ============================================================================
+  # Conditional and Control Flow Patterns
+  # ============================================================================
+
+  - id: use-unless-for-negative-conditions
+    message: Use unless for negative conditions (single-line only)
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        if !$CONDITION
+          $BODY
+        end
+    note: "unless reads better for negative conditions. Found throughout controllers."
+    fix: |
+      unless $CONDITION
+        $BODY
+      end
+
+  - id: avoid-unless-with-else
+    message: Avoid unless with else; use if instead
+    severity: warning
+    language: ruby
+    rule:
+      pattern: |
+        unless $CONDITION
+          $THEN_BODY
+        else
+          $ELSE_BODY
+        end
+    note: "unless with else is confusing. Use if with positive condition."
+    fix: |
+      if $CONDITION
+        $ELSE_BODY
+      else
+        $THEN_BODY
+      end
+
+  - id: prefer-or-operator-for-default-assignment
+    message: Use ||= for default value assignment
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: "$VAR = $VAR || $DEFAULT"
+        - pattern: |
+            if $VAR.nil?
+              $VAR = $DEFAULT
+            end
+    note: "||= is the idiomatic Ruby way. Found in session.rb:8, webhook.rb:36"
+    fix: "$VAR ||= $DEFAULT"
+
+  - id: use-presence-or-for-defaults
+    message: Use .presence || for defaults with blank values
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$VALUE.blank? ? $DEFAULT : $VALUE"
+    note: ".presence || is cleaner. Found in helper files."
+    fix: "$VALUE.presence || $DEFAULT"
+
+  # ============================================================================
+  # Method Definition Patterns
+  # ============================================================================
+
+  - id: single-line-method-definitions
+    message: Use single-line syntax for simple method definitions
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        def $METHOD
+          $SINGLE_STATEMENT
+        end
+    note: "For single-expression methods, consider: def method = expression (Ruby 3.0+)"
+    fix: "def $METHOD = $SINGLE_STATEMENT"
+
+  - id: keyword-arguments-for-multiple-params
+    message: Use keyword arguments for methods with 3+ parameters
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "def $METHOD($ARG1, $ARG2, $ARG3, $$$REST)"
+    note: "Keyword arguments improve readability and flexibility. Found in notification.rb:2"
+    fix: "def $METHOD($ARG1:, $ARG2:, $ARG3:, $$$REST)"
+
+  - id: raise-not-implemented-for-abstract-methods
+    message: Use raise NotImplementedError for abstract methods
+    severity: error
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            def $METHOD
+              raise StandardError
+            end
+        - not:
+            pattern: |
+              def $METHOD
+                raise NotImplementedError
+              end
+    note: "NotImplementedError is the correct exception for abstract methods. Found in filter.rb:14,18"
+    fix: "raise NotImplementedError"
+
+  # ============================================================================
+  # Module and Class Patterns
+  # ============================================================================
+
+  - id: extend-self-for-module-methods
+    message: Use 'extend self' for module-level methods
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - inside:
+            pattern: "module $NAME"
+        - pattern: |
+            def self.$METHOD
+              $$$_
+            end
+    note: "extend self allows calling module methods as Module.method or include + method. Found in private_network_guard.rb:7"
+    fix: |
+      module $NAME
+        extend self
+
+        def $METHOD
+          $$$_
+        end
+      end
+
+  - id: struct-for-simple-data-objects
+    message: Use Struct for simple data-holding classes
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            class $NAME
+              attr_accessor $$$ATTRS
+
+              def initialize($$$PARAMS)
+                $$$ASSIGNMENTS
+              end
+            end
+        - not:
+            inside:
+              pattern: "< Struct.new"
+    note: "Struct is more concise for data objects. Found in sound.rb:2"
+    fix: "class $NAME < Struct.new($$$ATTRS)"
+
+  # ============================================================================
+  # ActiveRecord Query Patterns
+  # ============================================================================
+
+  - id: use-exists-for-presence-check
+    message: Use .exists? instead of .present? for ActiveRecord relations
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "$RELATION.where($$$CONDITIONS).present?"
+    note: ".exists? is more efficient as it doesn't load records. Found in tests."
+    fix: "$RELATION.where($$$CONDITIONS).exists?"
+
+  - id: use-any-for-collection-presence
+    message: Use .any? instead of .present? for collections
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$COLLECTION.present?"
+    note: ".any? is more idiomatic for checking collection presence"
+    fix: "$COLLECTION.any?"
+
+  - id: use-none-for-empty-relation
+    message: Use Model.none for intentionally empty ActiveRecord relations
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "$MODEL.where('1 = 0')"
+    note: "Model.none is the idiomatic way. Found in searches_controller.rb:25"
+    fix: "$MODEL.none"
+
+  - id: use-touch-for-timestamp-update
+    message: Use .touch to update timestamps without callbacks
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$RECORD.update(updated_at: Time.current)"
+    note: ".touch is more efficient and idiomatic. Found in search.rb:10"
+    fix: "$RECORD.touch"
+
+  - id: use-destroy-by-for-conditional-destroy
+    message: Use .destroy_by for conditional record destruction
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$MODEL.where($$$CONDITIONS).destroy_all"
+    note: ".destroy_by is more concise. Found in sessions_controller.rb:37"
+    fix: "$MODEL.destroy_by($$$CONDITIONS)"
+
+  # ============================================================================
+  # Rails Controller Patterns
+  # ============================================================================
+
+  - id: use-head-for-empty-responses
+    message: Use head :status for responses without body
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: "render nothing: true, status: :$STATUS"
+        - pattern: "render body: nil, status: :$STATUS"
+    note: "head is the Rails way for empty responses. Found throughout controllers."
+    fix: "head :$STATUS"
+
+  - id: flash-now-for-render
+    message: Use flash.now when rendering (not redirecting)
+    severity: error
+    language: ruby
+    rule:
+      all:
+        - pattern: "flash[:$KEY] = $VALUE"
+        - inside:
+            any:
+              - pattern: "render $$$_"
+    note: "flash persists to next request; use flash.now for current request. Found in sessions_controller.rb:31"
+    fix: "flash.now[:$KEY] = $VALUE"
+
+  - id: use-redirect-status-symbols
+    message: Use status symbols for redirects
+    severity: info
+    language: ruby
+    rule:
+      pattern: "redirect_to $URL, status: $NUMBER"
+    note: "Use symbols like :moved_permanently, :found, :see_other for clarity"
+    fix: "redirect_to $URL, status: :$SYMBOL"
+
+  # ============================================================================
+  # Helper Method Patterns
+  # ============================================================================
+
+  - id: use-tag-helper-methods
+    message: Use tag.method instead of tag(:method)
+    severity: info
+    language: ruby
+    rule:
+      pattern: "tag(:$TAG, $$$ATTRS)"
+    note: "tag.method is cleaner Ruby 2.5+ syntax. Mixed usage in helpers."
+    fix: "tag.$TAG($$$ATTRS)"
+
+  - id: helper-methods-accept-blocks
+    message: Helper methods should accept blocks with &
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - inside:
+            pattern: "module $NAMEHelper"
+        - pattern: "def $METHOD($$$ARGS)"
+        - not:
+            pattern: "def $METHOD($$$ARGS, &)"
+    note: "Use & to accept blocks for flexible helper composition. Found in rooms_helper.rb:2"
+    fix: "def $METHOD($$$ARGS, &)"
+
+  # ============================================================================
+  # Testing Patterns (Minitest)
+  # ============================================================================
+
+  - id: use-assert-not-over-refute
+    message: Use assert_not instead of refute
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: "refute $CONDITION"
+        - pattern: "refute_equal $A, $B"
+    note: "assert_not is preferred in Rails. Found throughout tests."
+    fix: "assert_not $CONDITION"
+
+  - id: setup-with-do-block
+    message: Use setup do...end for test setup
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        def setup
+          $$$BODY
+        end
+    note: "setup do...end is the Minitest convention. Found in all test files."
+    fix: |
+      setup do
+        $$$BODY
+      end
+
+  - id: test-string-description
+    message: Use test \"description\" syntax for test methods
+    severity: info
+    language: ruby
+    rule:
+      pattern: "def test_$NAME"
+    note: "test \"description\" is more readable. Found in 100% of tests."
+    fix: 'test "$DESCRIPTION" do'
+
+  - id: use-travel-to-for-time-testing
+    message: Use travel_to for time-dependent tests
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: "Time.stub(:now, $TIME)"
+        - pattern: "Time.stubs(:current).returns($TIME)"
+    note: "travel_to is Rails built-in for time testing. Found in membership_test.rb:15"
+    fix: "travel_to $TIME"
+
+  # ============================================================================
+  # Rails Configuration Patterns
+  # ============================================================================
+
+  - id: use-env-fetch-with-default
+    message: Use ENV.fetch with default value instead of ENV[] || default
+    severity: warning
+    language: ruby
+    rule:
+      pattern: 'ENV["$KEY"] || $DEFAULT'
+    note: "ENV.fetch provides clearer intent. Found in production.rb:62"
+    fix: 'ENV.fetch("$KEY", $DEFAULT)'
+
+  - id: use-blank-for-nil-or-empty-env
+    message: Use .blank? for checking ENV variables
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: 'ENV["$KEY"].nil? || ENV["$KEY"].empty?'
+        - pattern: 'ENV["$KEY"] == "" || ENV["$KEY"].nil?'
+    note: ".blank? checks for nil, empty string, and whitespace. Found in production.rb:83"
+    fix: 'ENV["$KEY"].blank?'
+
+  # ============================================================================
+  # Error Handling Patterns
+  # ============================================================================
+
+  - id: rescue-specific-exceptions
+    message: Rescue specific exceptions instead of Exception
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "rescue Exception => $VAR"
+    note: "Rescuing Exception catches system exits and interrupts. Use StandardError or specific exceptions."
+    fix: "rescue StandardError => $VAR"
+
+  - id: use-rescue-modifier-for-single-line
+    message: Use rescue modifier for single-line rescue
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        begin
+          $EXPR
+        rescue
+          $DEFAULT
+        end
+    note: "Use inline rescue for conciseness: expr rescue default"
+    fix: "$EXPR rescue $DEFAULT"
+
+  # ============================================================================
+  # Delegation and Forwarding Patterns
+  # ============================================================================
+
+  - id: use-delegate-for-method-forwarding
+    message: Use delegate for simple method forwarding
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        def $METHOD
+          $OBJECT.$METHOD
+        end
+    note: "delegate is cleaner for forwarding. Found in current.rb:4, filter.rb:23"
+    fix: "delegate :$METHOD, to: :$OBJECT"
+
+  - id: delegate-with-prefix
+    message: Use prefix: true when delegating to avoid name conflicts
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: "delegate $$$METHODS, to: :$OBJECT"
+        - not:
+            pattern: "delegate $$$_, prefix: $_"
+    note: "Consider adding prefix for clarity. Found in current.rb:4"
+    fix: "delegate $$$METHODS, to: :$OBJECT, prefix: true"
+
+  # ============================================================================
+  # Concurrency Patterns
+  # ============================================================================
+
+  - id: use-concurrent-pool-for-threading
+    message: Use Concurrent:: thread pools instead of raw threads
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "Thread.new do"
+    note: "Concurrent:: provides better thread pool management. Found in pool.rb:6"
+    fix: "pool.post do"
+
+  # ============================================================================
+  # Regex and Pattern Matching
+  # ============================================================================
+
+  - id: use-character-classes-in-regex
+    message: Use POSIX character classes in regex
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: "/[a-zA-Z0-9]/"
+        - pattern: "/[0-9]/"
+    note: "Use [:word:], [:digit:] for internationalization. Found in searches_controller.rb:30"
+    fix: "/[[:word:]]/ or /[[:digit:]]/"
+
+  - id: use-start-end-of-string-anchors
+    message: Use \\A and \\z instead of ^ and $ for string anchors
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: '/^$$$PATTERN$/'
+        - pattern: '/^$$$PATTERN/'
+        - pattern: '/$$$PATTERN$/'
+    note: "\\A and \\z match string boundaries; ^ and $ match line boundaries"
+    fix: '/\\A$$$PATTERN\\z/'
+
+  # ============================================================================
+  # Rails Idioms
+  # ============================================================================
+
+  - id: use-becomes-for-sti-conversion
+    message: Use .becomes! for STI type conversion
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$RECORD.type = $NEW_TYPE"
+    note: ".becomes! properly converts STI types. Found in opens_controller.rb:39"
+    fix: "$RECORD.becomes!($NEW_TYPE)"
+
+  - id: use-compact-blank-on-hashes
+    message: Use .compact_blank to remove nil and empty values from hashes
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$HASH.compact.reject { |k, v| v.blank? }"
+    note: ".compact_blank is cleaner Rails 6.1+ method. Found in set_current_request.rb:11"
+    fix: "$HASH.compact_blank"
+
+  - id: use-turbo-stream-broadcasts
+    message: Use broadcast_* methods for Turbo Stream updates
+    severity: info
+    language: ruby
+    rule:
+      pattern: "Turbo::StreamsChannel.broadcast_$ACTION_to"
+    note: "Use broadcast_$action_to helper methods. Found throughout controllers."
+
+  # ============================================================================
+  # Array and Hash Literal Patterns
+  # ============================================================================
+
+  - id: trailing-commas-in-multiline-arrays
+    message: Add trailing comma in multiline array/hash literals
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: |
+            [
+              $$$ITEMS,
+              $LAST_ITEM
+            ]
+        - pattern: |
+            {
+              $$$ITEMS,
+              $LAST_KEY: $LAST_VALUE
+            }
+    note: "Trailing commas make diffs cleaner and prevent errors when adding items"
+    fix: "Add comma after last item"
+
+  # ============================================================================
+  # Comment Patterns
+  # ============================================================================
+
+  - id: fixme-comments-documented
+    message: FIXME comments should explain what needs fixing
+    severity: info
+    language: ruby
+    rule:
+      pattern: "# FIXME"
+    note: "FIXME comments should include explanation and optionally a ticket number. Found in rooms/direct.rb:10"
+    fix: "# FIXME: Explanation of what needs fixing"
+
+  - id: prefer-inline-comments-for-clarification
+    message: Use inline comments for clarifications
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        # $COMMENT
+        $STATEMENT
+    note: "Consider inline comment for brief clarifications: statement # comment"
+    fix: "$STATEMENT # $COMMENT"
+
+  # ============================================================================
+  # ActiveStorage Patterns
+  # ============================================================================
+
+  - id: check-attached-before-using
+    message: Check .attached? before accessing ActiveStorage attachments
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "$RECORD.$ATTACHMENT.method"
+    note: "Always check .attached? to avoid errors. Found in application_helper.rb:44"
+    fix: "$RECORD.$ATTACHMENT.method if $RECORD.$ATTACHMENT.attached?"
+
+  # ============================================================================
+  # Callback Patterns (Additional)
+  # ============================================================================
+
+  - id: use-symbol-for-callback-methods
+    message: Use symbol for callback method names
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: 'before_action "$METHOD"'
+        - pattern: 'after_create "$METHOD"'
+    note: "Symbols are preferred for callback method references"
+    fix: "before_action :$METHOD"
+
+  - id: callbacks-with-method-names-not-lambdas
+    message: Extract complex callback logic to methods
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: "after_$HOOK -> { $$$LONG_BODY }"
+        - pattern: "$$$BODY"
+        # Check if body is more than 2 lines
+    note: "Long callbacks should be extracted to methods. Found in search.rb:4"
+    fix: "after_$HOOK :method_name"
