@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2025-11-05T19:36:46+0000",
+  "analyzed_path": "app",
+  "summary": {
+    "total_files": 117,
+    "total_lines": 3101,
+    "violations_by_category": {
+      "syntax": 1,
+      "rails": 2,
+      "performance": 1
+    },
+    "compliance_by_pattern": {
+      "stabby_lambda": {
+        "name": "Stabby Lambda Syntax",
+        "good": 70,
+        "bad": 0,
+        "compliance": 100.0,
+        "category": "syntax",
+        "impact": "high",
+        "auto_fix": true
+      },
+      "modern_hash": {
+        "name": "Modern Hash Syntax",
+        "good": 769,
+        "bad": 0,
+        "compliance": 100.0,
+        "category": "syntax",
+        "impact": "high",
+        "auto_fix": true
+      },
+      "symbol_array": {
+        "name": "Symbol Array (%i[])",
+        "good": 19,
+        "bad": 1,
+        "compliance": 95.0,
+        "category": "syntax",
+        "impact": "medium",
+        "auto_fix": true
+      },
+      "time_current": {
+        "name": "Time.current vs Time.now",
+        "good": 3,
+        "bad": 2,
+        "compliance": 60.0,
+        "category": "rails",
+        "impact": "critical",
+        "auto_fix": true
+      },
+      "pluck_usage": {
+        "name": ".pluck for attributes",
+        "good": 6,
+        "bad": 1,
+        "compliance": 85.7,
+        "category": "performance",
+        "impact": "high",
+        "auto_fix": false
+      },
+      "exists_check": {
+        "name": ".exists? for presence",
+        "good": 0,
+        "bad": 0,
+        "compliance": 100.0,
+        "category": "performance",
+        "impact": "high",
+        "auto_fix": false
+      },
+      "find_each": {
+        "name": ".find_each for large collections",
+        "good": 0,
+        "bad": 0,
+        "compliance": 100.0,
+        "category": "performance",
+        "impact": "critical",
+        "auto_fix": false
+      },
+      "string_interpolation": {
+        "name": "String interpolation",
+        "good": 47,
+        "bad": 0,
+        "compliance": 100.0,
+        "category": "syntax",
+        "impact": "low",
+        "auto_fix": false
+      }
+    },
+    "overall_score": 92.6
+  },
+  "violations": [
+    {
+      "file": "app/helpers/rooms_helper.rb",
+      "pattern": "Symbol Array (%i[])",
+      "severity": "medium",
+      "count": 1
+    },
+    {
+      "file": "app/models/message/mentionee.rb",
+      "pattern": ".pluck for attributes",
+      "severity": "high",
+      "count": 1
+    },
+    {
+      "file": "app/models/session.rb",
+      "pattern": "Time.current vs Time.now",
+      "severity": "critical",
+      "count": 2
+    }
+  ]
+}

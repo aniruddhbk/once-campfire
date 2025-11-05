@@ -1,0 +1,546 @@
+# Campfire Ruby/Rails Style - ast-grep Configuration
+# Generated from comprehensive codebase analysis
+# Usage: sg scan --config sgconfig.yml
+
+ruleDirs:
+  - rules
+
+utils:
+  stabby-lambda:
+    pattern: "-> { $$$BODY }"
+  stabby-lambda-with-args:
+    pattern: "->($$$ARGS) { $$$BODY }"
+
+rules:
+  # ============================================================================
+  # Lambda and Proc Patterns
+  # ============================================================================
+
+  - id: use-stabby-lambda-not-lambda-keyword
+    message: Use stabby lambda syntax (->) instead of lambda keyword
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: lambda { $$$BODY }
+        - pattern: lambda do $$$BODY end
+    note: "Campfire codebase exclusively uses stabby lambda (->).  Found in 100% of lambdas (40+ occurrences)."
+    fix: "-> { ... } or ->(args) { ... }"
+
+  - id: use-stabby-lambda-not-proc
+    message: Use stabby lambda syntax (->) instead of Proc.new
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: Proc.new { $$$BODY }
+        - pattern: Proc.new do $$$BODY end
+        - pattern: proc { $$$BODY }
+        - pattern: proc do $$$BODY end
+    note: "Campfire codebase exclusively uses stabby lambda (->)."
+    fix: "-> { ... } or ->(args) { ... }"
+
+  - id: scope-must-use-stabby-lambda
+    message: ActiveRecord scopes must use stabby lambda syntax
+    severity: error
+    language: ruby
+    rule:
+      pattern: scope :$NAME, lambda { $$$BODY }
+    note: "All 50+ scopes in codebase use stabby lambda: scope :name, -> { ... }"
+    fix: "scope :$NAME, -> { $$$BODY }"
+
+  # ============================================================================
+  # Hash and Symbol Patterns
+  # ============================================================================
+
+  - id: prefer-modern-hash-syntax
+    message: Use modern hash syntax (key: value) instead of hash rockets
+    severity: warning
+    language: ruby
+    rule:
+      pattern: "{ :$KEY => $VALUE }"
+    note: "99% of hashes use modern syntax. Hash rockets only acceptable in special contexts (regex, etc)."
+    fix: "{ $KEY: $VALUE }"
+
+  - id: use-percent-i-for-symbol-arrays
+    message: Use %i[] notation for symbol arrays
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: "[$$$SYMBOLS]"
+        - inside:
+            any:
+              - pattern: "only: [$$$_]"
+              - pattern: "except: [$$$_]"
+        - not:
+            pattern: "%i[$$$_]"
+    note: "100% of symbol arrays in controller filters and routes use %i[] notation."
+    fix: "%i[ symbol1 symbol2 ]"
+
+  # ============================================================================
+  # ActiveRecord Patterns
+  # ============================================================================
+
+  - id: belongs-to-default-should-use-lambda
+    message: belongs_to default should use lambda for dynamic values
+    severity: error
+    language: ruby
+    rule:
+      all:
+        - pattern: "belongs_to :$NAME, $$$OPTIONS, default: $VALUE"
+        - not:
+            pattern: "default: -> { $$$_ }"
+    note: "Dynamic defaults must use lambda to evaluate at runtime, not load time."
+    fix: "belongs_to :$NAME, default: -> { Current.user }"
+
+  - id: enum-should-use-index-by-pattern
+    message: String-based enums should use .index_by(&:itself) pattern
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: "enum :$NAME, %w[$$$VALUES]"
+        - not:
+            pattern: "enum :$NAME, %w[$$$VALUES].index_by(&:itself)"
+    note: "String-based enums in Campfire use .index_by(&:itself) for cleaner syntax."
+    fix: "enum :$NAME, %w[ ... ].index_by(&:itself)"
+
+  # ============================================================================
+  # Concern Patterns
+  # ============================================================================
+
+  - id: concern-must-extend-activesupport
+    message: Concerns must extend ActiveSupport::Concern
+    severity: error
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            module $NAME
+              $$$BODY
+            end
+        - inside:
+            any:
+              - pattern: "app/models/$$$PATH/concerns/$$$FILE"
+              - pattern: "app/controllers/concerns/$$$FILE"
+        - not:
+            pattern: |
+              module $NAME
+                extend ActiveSupport::Concern
+                $$$_
+              end
+    note: "100% of concerns use ActiveSupport::Concern pattern."
+    fix: "module Name\n  extend ActiveSupport::Concern\n  # ...\nend"
+
+  # ============================================================================
+  # String and Comment Patterns
+  # ============================================================================
+
+  - id: prefer-double-quotes-for-strings
+    message: Prefer double quotes for strings (Rails Omakase convention)
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: "'$STRING'"
+        - not:
+            inside:
+              any:
+                - pattern: "require '$_'"
+                - pattern: "require_relative '$_'"
+                - pattern: "gem '$_'"
+    note: "Rails Omakase default. ~90% of strings use double quotes."
+    fix: '"$STRING"'
+
+  # ============================================================================
+  # Modern Ruby Features
+  # ============================================================================
+
+  - id: use-safe-navigation-operator
+    message: Use safe navigation operator (&.) instead of conditional check
+    severity: info
+    language: ruby
+    rule:
+      any:
+        - pattern: "$OBJ && $OBJ.$METHOD"
+        - pattern: "$OBJ ? $OBJ.$METHOD : nil"
+        - pattern: "if $OBJ\n  $OBJ.$METHOD\nend"
+    note: "30+ usages of &. throughout codebase. More concise and prevents NoMethodError."
+    fix: "$OBJ&.$METHOD"
+
+  - id: use-tap-for-initialization
+    message: Consider using .tap for initialization with side effects
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        $VAR = $EXPR
+        $VAR.$METHOD1
+        $VAR.$METHOD2
+    note: "Pattern seen 10+ times. Use tap when performing operations on newly created objects."
+    fix: "$EXPR.tap { |obj| obj.$METHOD1; obj.$METHOD2 }"
+
+  # ============================================================================
+  # Test Patterns (Minitest)
+  # ============================================================================
+
+  - id: test-assertions-use-stabby-lambda
+    message: assert_difference and assert_changes should use stabby lambda
+    severity: error
+    language: ruby
+    rule:
+      any:
+        - pattern: "assert_difference($EXPR) do"
+        - pattern: "assert_changes($EXPR) do"
+        - pattern: "assert_difference(lambda { $$$_ }) do"
+        - pattern: "assert_changes(lambda { $$$_ }) do"
+    note: "100% of test assertions use stabby lambda syntax."
+    fix: "assert_difference -> { Model.count } do\nend"
+
+  # ============================================================================
+  # Controller Patterns
+  # ============================================================================
+
+  - id: before-action-only-except-use-symbols
+    message: before_action only/except should use symbol arrays with %i[]
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: "before_action :$METHOD, only: [$$$ACTIONS]"
+        - not:
+            pattern: "before_action :$METHOD, only: %i[$$$_]"
+    note: "100% consistent in controllers. Use %i[] for action symbol arrays."
+    fix: "before_action :$METHOD, only: %i[ show edit update ]"
+
+  - id: controller-private-methods-indented
+    message: Private methods should be indented under private keyword
+    severity: error
+    language: ruby
+    rule:
+      pattern: |
+        private
+        def $METHOD
+          $$$BODY
+        end
+    note: "Private keyword at same indentation as methods, but private methods must be indented."
+    fix: |
+      private
+        def $METHOD
+          $$$BODY
+        end
+
+  # ============================================================================
+  # Job Patterns
+  # ============================================================================
+
+  - id: jobs-should-be-namespaced
+    message: Domain jobs should be namespaced under parent model
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            class $NAME < ApplicationJob
+              $$$BODY
+            end
+        - inside:
+            pattern: "app/jobs/$$$_job.rb"
+        - not:
+            pattern: "class $NAMESPACE::$NAME < ApplicationJob"
+        - not:
+            pattern: "ApplicationJob"
+    note: "100% of domain jobs namespaced (Room::PushMessageJob, Bot::WebhookJob)."
+    fix: "class ModelName::JobName < ApplicationJob"
+
+  # ============================================================================
+  # Method Naming and Organization
+  # ============================================================================
+
+  - id: class-methods-in-models-use-class-self
+    message: Use 'class << self' for class methods in models
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            def self.$METHOD
+              $$$BODY
+            end
+        - inside:
+            pattern: "app/models/$$$_.rb"
+        - not:
+            inside:
+              pattern: |
+                class << self
+                  $$$_
+                end
+    note: "100% of model class methods use class << self block."
+    fix: |
+      class << self
+        def $METHOD
+          $$$BODY
+        end
+      end
+
+  # ============================================================================
+  # Case Statement Patterns
+  # ============================================================================
+
+  - id: case-boolean-conditions-without-variable
+    message: Use case without variable for boolean conditions
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        case $VAR
+        when $VAR == $COND
+          $$$BODY
+        end
+    note: "10+ occurrences use 'case' without variable for boolean when conditions."
+    fix: |
+      case
+      when $COND
+        $$$BODY
+      end
+
+  # ============================================================================
+  # Routing Patterns
+  # ============================================================================
+
+  - id: routes-resource-only-use-symbols
+    message: Route resource only/except should use %i[] for action arrays
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - inside:
+            pattern: "config/routes.rb"
+        - pattern: "resources :$NAME, only: [$$$ACTIONS]"
+        - not:
+            pattern: "resources :$NAME, only: %i[$$$_]"
+    note: "100% of route definitions use %i[] notation."
+    fix: "resources :$NAME, only: %i[ index show ]"
+
+  # ============================================================================
+  # Error Handling Patterns
+  # ============================================================================
+
+  - id: rescue-at-method-level-preferred
+    message: Prefer rescue at method level over begin/rescue/end
+    severity: info
+    language: ruby
+    rule:
+      pattern: |
+        def $METHOD
+          begin
+            $$$BODY
+          rescue $EXCEPTION
+            $$$HANDLER
+          end
+        end
+    note: "5+ occurrences use method-level rescue when entire method needs handling."
+    fix: |
+      def $METHOD
+        $$$BODY
+      rescue $EXCEPTION
+        $$$HANDLER
+      end
+
+  # ============================================================================
+  # Constant and Variable Naming
+  # ============================================================================
+
+  - id: constants-use-screaming-snake-case
+    message: Constants should use SCREAMING_SNAKE_CASE
+    severity: error
+    language: ruby
+    rule:
+      all:
+        - pattern: "$CONST = $VALUE"
+        - inside:
+            any:
+              - pattern: "module $NAME"
+              - pattern: "class $NAME"
+        - not:
+            pattern: "$CONST = $VALUE"
+            regex: "^[A-Z][A-Z0-9_]*$"
+    note: "100% consistent. Examples: PAGE_SIZE, THUMBNAIL_MAX_WIDTH"
+
+  # ============================================================================
+  # Ruby 3.1+ Shorthand Patterns
+  # ============================================================================
+
+  - id: use-ruby-3-shorthand-kwargs
+    message: Use Ruby 3.1 shorthand for keyword arguments when variable matches param name
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$METHOD($PARAM: $PARAM)"
+    note: "Ruby 3.1+ feature used consistently in newer code."
+    fix: "$METHOD($PARAM:)"
+
+  # ============================================================================
+  # Association Patterns
+  # ============================================================================
+
+  - id: touch-true-for-cache-invalidation
+    message: Consider using touch: true on belongs_to for cache invalidation
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: "belongs_to :$NAME"
+        - not:
+            pattern: "belongs_to :$NAME, $$$_, touch: true"
+    note: "Used strategically for cache invalidation (e.g., message belongs_to room, touch: true)."
+
+  # ============================================================================
+  # Scope Patterns
+  # ============================================================================
+
+  - id: scope-sql-use-arel-or-where
+    message: Scopes should use Arel or where clauses, avoid raw SQL
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: "scope :$NAME, -> { $$$BODY }"
+        - pattern: '$"$$$SQL"'
+        - inside:
+            pattern: "scope :$NAME, -> { $$$BODY }"
+    note: "Prefer Arel for database-agnostic queries. Use SQL only when necessary."
+
+  # ============================================================================
+  # Include Patterns
+  # ============================================================================
+
+  - id: include-concerns-before-class-body
+    message: Include concerns at top of class, before associations/validations
+    severity: info
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            class $NAME < $PARENT
+              $$$BEFORE
+              include $CONCERN
+              $$$AFTER
+            end
+        - not:
+            inside:
+              pattern: |
+                class $NAME < $PARENT
+                  include $CONCERN
+                  $$$BODY
+                end
+    note: "100% consistent. Includes always at top of class definition."
+
+  # ============================================================================
+  # Module and Namespace Patterns
+  # ============================================================================
+
+  - id: concern-naming-matches-parent-model
+    message: Concern modules should be namespaced under parent model
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - inside:
+            pattern: "app/models/$PARENT/$CONCERN.rb"
+        - pattern: |
+            module $NAME
+              extend ActiveSupport::Concern
+              $$$_
+            end
+        - not:
+            pattern: |
+              module $PARENT::$CONCERN
+                extend ActiveSupport::Concern
+                $$$_
+              end
+    note: "100% consistent. E.g., User::Bot in app/models/user/bot.rb"
+
+  # ============================================================================
+  # Transaction Patterns
+  # ============================================================================
+
+  - id: use-transaction-for-multi-step-operations
+    message: Use transaction block for multi-step database operations
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: |
+            $MODEL1.$METHOD1
+            $MODEL2.$METHOD2
+        - inside:
+            kind: method
+        - not:
+            inside:
+              pattern: |
+                transaction do
+                  $$$_
+                end
+    note: "Ensures atomicity. Used consistently for multi-model updates."
+
+  # ============================================================================
+  # Array and Collection Patterns
+  # ============================================================================
+
+  - id: use-collect-over-map-for-transformations
+    message: Prefer collect over map (Rails convention)
+    severity: info
+    language: ruby
+    rule:
+      pattern: "$COLLECTION.map { |$ITEM| $$$BODY }"
+    note: "Campfire uses collect consistently. Rails historically preferred collect."
+    fix: "$COLLECTION.collect { |$ITEM| $$$BODY }"
+
+  # ============================================================================
+  # Callback Patterns
+  # ============================================================================
+
+  - id: callbacks-should-use-stabby-lambda
+    message: ActiveRecord callbacks should use stabby lambda for inline blocks
+    severity: warning
+    language: ruby
+    rule:
+      any:
+        - pattern: "before_create { $$$BODY }"
+        - pattern: "after_create { $$$BODY }"
+        - pattern: "before_save { $$$BODY }"
+        - pattern: "after_save { $$$BODY }"
+        - pattern: "before_destroy { $$$BODY }"
+        - pattern: "after_destroy { $$$BODY }"
+    note: "All inline callbacks use stabby lambda: before_create -> { ... }"
+    fix: "before_create -> { $$$BODY }"
+
+  # ============================================================================
+  # Query Patterns
+  # ============================================================================
+
+  - id: use-where-not-for-negative-conditions
+    message: Use where.not for negative conditions instead of != in SQL
+    severity: info
+    language: ruby
+    rule:
+      pattern: 'where("$COLUMN != ?", $VALUE)'
+    note: "Arel provides cleaner syntax and better database portability."
+    fix: "where.not($COLUMN: $VALUE)"
+
+  - id: use-preload-includes-for-n-plus-1
+    message: Use preload/includes to avoid N+1 queries
+    severity: warning
+    language: ruby
+    rule:
+      all:
+        - pattern: "$COLLECTION.each { |$ITEM| $ITEM.$ASSOC.$METHOD }"
+        - not:
+            inside:
+              any:
+                - pattern: "$COLLECTION.includes(:$ASSOC)"
+                - pattern: "$COLLECTION.preload(:$ASSOC)"
+                - pattern: "$COLLECTION.eager_load(:$ASSOC)"
+    note: "Prevent N+1 queries with preloading. See with_creator scope pattern."

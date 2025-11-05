@@ -1,0 +1,71 @@
+{
+  "Stabby Lambda": {
+    "prefix": "lam",
+    "body": ["-> { $1 }"],
+    "description": "Stabby lambda with block"
+  },
+  "Stabby Lambda with Params": {
+    "prefix": "lamp",
+    "body": ["->(${1:params}) { $2 }"],
+    "description": "Stabby lambda with parameters"
+  },
+  "Stabby Lambda do-end": {
+    "prefix": "lamdo",
+    "body": ["-> do", "  $1", "end"],
+    "description": "Stabby lambda with do-end"
+  },
+  "Scope": {
+    "prefix": "scope",
+    "body": ["scope :${1:name}, -> { ${2:where(active: true)} }"],
+    "description": "ActiveRecord scope with stabby lambda"
+  },
+  "Before Action": {
+    "prefix": "before",
+    "body": ["before_action :${1:authenticate}, only: %i[ ${2:create update destroy} ]"],
+    "description": "Controller before_action with %i[]"
+  },
+  "Pluck": {
+    "prefix": "pluck",
+    "body": ["${1:Model}.${2:where(active: true)}.pluck(:${3:id})"],
+    "description": "ActiveRecord pluck"
+  },
+  "Exists Check": {
+    "prefix": "exists",
+    "body": ["${1:Model}.where(${2:field}: ${3:value}).exists?"],
+    "description": "ActiveRecord exists? check"
+  },
+  "Find Each": {
+    "prefix": "findeach",
+    "body": ["${1:Model}.find_each do |${2:record}|", "  $3", "end"],
+    "description": "ActiveRecord find_each for batching"
+  },
+  "Time Current": {
+    "prefix": "timec",
+    "body": ["Time.current"],
+    "description": "Time.current (timezone-aware)"
+  },
+  "Concern": {
+    "prefix": "concern",
+    "body": [
+      "module ${1:ModuleName}",
+      "  extend ActiveSupport::Concern",
+      "",
+      "  included do",
+      "    $2",
+      "  end",
+      "",
+      "  class_methods do",
+      "    $3",
+      "  end",
+      "",
+      "  $4",
+      "end"
+    ],
+    "description": "ActiveSupport::Concern template"
+  },
+  "Test Case": {
+    "prefix": "test",
+    "body": ["test \"${1:should do something}\" do", "  $2", "end"],
+    "description": "Minitest test case"
+  }
+}
