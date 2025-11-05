@@ -30,7 +30,8 @@ class CampfireReporter {
     console.log('╚═══════════════════════════════════════════════════════════╝\n');
     console.log(`📋 Total tests: ${suite.allTests().length}`);
     console.log(`🔧 Workers: ${config.workers}`);
-    console.log(`🌐 Base URL: ${config.use.baseURL}`);
+    const baseURL = config.use?.baseURL || config.projects?.[0]?.use?.baseURL || 'Not configured';
+    console.log(`🌐 Base URL: ${baseURL}`);
     console.log('\n' + '─'.repeat(60) + '\n');
   }
 
