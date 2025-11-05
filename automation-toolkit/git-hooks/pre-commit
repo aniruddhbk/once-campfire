@@ -1,0 +1,69 @@
+#!/bin/bash
+# Campfire Style - Pre-commit Hook
+# Checks Ruby style before allowing commit
+
+set -e
+
+echo "🔍 Running pre-commit style checks..."
+
+# Get staged Ruby files
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.rb$' || true)
+
+if [ -z "$FILES" ]; then
+  echo "✅ No Ruby files changed"
+  exit 0
+fi
+
+echo "📝 Checking ${#FILES[@]} Ruby files..."
+
+# 1. Check Ruby syntax
+echo "  → Checking syntax..."
+SYNTAX_ERRORS=0
+for FILE in $FILES; do
+  if [ -f "$FILE" ]; then
+    ruby -c "$FILE" > /dev/null 2>&1 || {
+      echo "    ❌ Syntax error in $FILE"
+      ruby -c "$FILE"
+      SYNTAX_ERRORS=1
+    }
+  fi
+done
+
+if [ $SYNTAX_ERRORS -eq 1 ]; then
+  echo "❌ Fix syntax errors before committing"
+  exit 1
+fi
+
+# 2. Run Rubocop with auto-correct
+if command -v rubocop &> /dev/null; then
+  echo "  → Running Rubocop (auto-fixing)..."
+  bundle exec rubocop --auto-correct $FILES || {
+    echo "    ❌ Rubocop violations found"
+    echo "    💡 Run: bundle exec rubocop --auto-correct-all"
+    exit 1
+  }
+
+  # Re-add auto-corrected files
+  git add $FILES
+else
+  echo "  ⚠️  Rubocop not found, skipping..."
+fi
+
+# 3. Run AST-grep if available
+if command -v ast-grep &> /dev/null; then
+  echo "  → Running AST-grep..."
+  for FILE in $FILES; do
+    if [ -f "$FILE" ]; then
+      ast-grep scan "$FILE" --config sgconfig.yml > /dev/null 2>&1 || {
+        echo "    ❌ Pattern violations in $FILE"
+        echo "    💡 See: REFACTORING-PLAYBOOK.md"
+        exit 1
+      }
+    fi
+  done
+else
+  echo "  ⚠️  AST-grep not found, skipping..."
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0

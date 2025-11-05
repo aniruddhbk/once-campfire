@@ -1,0 +1,21 @@
+#!/bin/bash
+# Campfire Style - Pre-push Hook
+# Runs full test suite before pushing
+
+set -e
+
+echo "🧪 Running tests before push..."
+
+# Run full test suite
+bundle exec rails test
+
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed! Fix them before pushing."
+  echo ""
+  echo "💡 To push anyway (emergency): git push --no-verify"
+  echo "   (Not recommended!)"
+  exit 1
+fi
+
+echo "✅ All tests passed! Pushing..."
+exit 0
