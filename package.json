@@ -1,0 +1,31 @@
+{
+  "name": "once-campfire",
+  "version": "1.0.0",
+  "description": "Campfire is a web-based chat application. It supports many of the features you'd expect, including:",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:core": "playwright test e2e-tests/tests/01-core-flows.spec.js",
+    "test:markdown": "playwright test e2e-tests/tests/02-markdown-formatting.spec.js",
+    "test:chaos": "playwright test e2e-tests/tests/03-chaos-testing.spec.js",
+    "test:report": "playwright show-report",
+    "test:setup": "node e2e-tests/global-setup.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:59928/git/aniruddhbk/once-campfire"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}
