@@ -15,8 +15,15 @@
     "test:core": "playwright test e2e-tests/tests/01-core-flows.spec.js",
     "test:markdown": "playwright test e2e-tests/tests/02-markdown-formatting.spec.js",
     "test:chaos": "playwright test e2e-tests/tests/03-chaos-testing.spec.js",
+    "test:a11y": "playwright test e2e-tests/tests/04-accessibility.spec.js",
+    "test:performance": "playwright test e2e-tests/tests/05-performance.spec.js",
+    "test:realtime": "playwright test e2e-tests/tests/06-realtime-websockets.spec.js",
+    "test:visual": "playwright test e2e-tests/tests/07-visual-regression.spec.js",
+    "test:uploads": "playwright test e2e-tests/tests/08-file-uploads.spec.js",
+    "test:essential": "playwright test e2e-tests/tests/01-core-flows.spec.js e2e-tests/tests/02-markdown-formatting.spec.js",
+    "test:advanced": "playwright test e2e-tests/tests/04-accessibility.spec.js e2e-tests/tests/05-performance.spec.js e2e-tests/tests/06-realtime-websockets.spec.js",
     "test:report": "playwright show-report",
-    "test:setup": "node e2e-tests/global-setup.js"
+    "test:setup": "node e2e-tests/global-setup-auth.js"
   },
   "repository": {
     "type": "git",
@@ -26,6 +33,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.56.1"
   }
 }

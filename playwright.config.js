@@ -6,8 +6,8 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './e2e-tests/tests',
 
-  // Global setup - runs once before all tests
-  globalSetup: require.resolve('./e2e-tests/global-setup.js'),
+  // Global setup - runs once before all tests (with authentication state)
+  globalSetup: require.resolve('./e2e-tests/global-setup-auth.js'),
 
   // Maximum time one test can run
   timeout: 60 * 1000,
@@ -32,6 +32,7 @@ module.exports = defineConfig({
   // Reporter to use
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
+    ['./e2e-tests/helpers/custom-reporter.js', { verbose: false }],
     ['list']
   ],
 
