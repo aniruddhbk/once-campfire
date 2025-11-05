@@ -42,3 +42,15 @@ app/assets/builds/*
 
 # Ignore our exported zipfiles
 /*.zip
+
+# Node.js dependencies
+/node_modules
+
+# Playwright test artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/e2e-tests/screenshots/
+*.webm
+trace.zip
+.auth/
