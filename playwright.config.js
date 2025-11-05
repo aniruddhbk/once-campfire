@@ -57,16 +57,44 @@ module.exports = defineConfig({
     navigationTimeout: 30000,
   },
 
-  // Configure projects for major browsers
+  // Configure projects for major browsers and devices
   projects: [
+    // Desktop browsers
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Use authenticated state by default (will be set up in global setup)
         viewport: { width: 1280, height: 720 },
       },
     },
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+    {
+      name: 'webkit',
+      use: {
+        ...devices['Desktop Safari'],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+
+    // Mobile devices (optional - uncomment to enable)
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: { ...devices['Pixel 5'] },
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 13'] },
+    // },
+    // {
+    //   name: 'Tablet',
+    //   use: { ...devices['iPad Pro'] },
+    // },
   ],
 
   // Run your local dev server before starting the tests

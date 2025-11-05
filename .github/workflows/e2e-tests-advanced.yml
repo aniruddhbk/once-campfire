@@ -1,0 +1,387 @@
+# 🚀 ADVANCED E2E TESTING PIPELINE
+# Professional-grade CI/CD for Campfire tests
+#
+# Features:
+# - Multi-browser testing (Chrome, Firefox, Safari)
+# - Parallel execution
+# - Test sharding
+# - Automatic retries
+# - Lighthouse audits
+# - Accessibility testing
+# - Performance monitoring
+# - Test artifacts upload
+# - Slack notifications
+# - Test analytics
+
+name: 🧪 E2E Tests (Advanced)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - essential
+          - advanced
+          - core
+          - performance
+          - accessibility
+
+env:
+  RAILS_ENV: test
+  NODE_ENV: test
+
+jobs:
+  # ===========================================================================
+  # SETUP AND PREPARATION
+  # ===========================================================================
+  setup:
+    name: 🔧 Setup
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-keys.outputs.node }}
+      ruby-cache-key: ${{ steps.cache-keys.outputs.ruby }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Generate cache keys
+        id: cache-keys
+        run: |
+          echo "node=node-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+          echo "ruby=ruby-${{ hashFiles('**/Gemfile.lock') }}" >> $GITHUB_OUTPUT
+
+  # ===========================================================================
+  # ESSENTIAL TESTS (FAST)
+  # ===========================================================================
+  essential-tests:
+    name: ⚡ Essential Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: 🗄️ Setup database
+        run: |
+          bundle exec rails db:create db:migrate RAILS_ENV=test
+
+      - name: 🧪 Run essential tests (Shard ${{ matrix.shard }})
+        run: npm run test:essential -- --shard=${{ matrix.shard }}/2
+
+      - name: 📊 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-essential-${{ matrix.shard }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30
+
+  # ===========================================================================
+  # MULTI-BROWSER TESTING
+  # ===========================================================================
+  multi-browser:
+    name: 🌐 Multi-Browser Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: 🗄️ Setup database
+        run: |
+          bundle exec rails db:create db:migrate RAILS_ENV=test
+
+      - name: 🧪 Run tests on ${{ matrix.browser }}
+        run: npx playwright test --project=${{ matrix.browser }}
+
+      - name: 📊 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.browser }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30
+
+  # ===========================================================================
+  # ACCESSIBILITY TESTS
+  # ===========================================================================
+  accessibility:
+    name: ♿ Accessibility Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: 🗄️ Setup database
+        run: bundle exec rails db:create db:migrate RAILS_ENV=test
+
+      - name: ♿ Run accessibility tests
+        run: npm run test:a11y
+
+      - name: 📊 Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: playwright-report/
+          retention-days: 30
+
+  # ===========================================================================
+  # PERFORMANCE TESTS
+  # ===========================================================================
+  performance:
+    name: ⚡ Performance Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: 🗄️ Setup database
+        run: bundle exec rails db:create db:migrate RAILS_ENV=test
+
+      - name: ⚡ Run performance tests
+        run: npm run test:performance
+
+      - name: 📊 Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  # ===========================================================================
+  # VISUAL REGRESSION TESTS
+  # ===========================================================================
+  visual-regression:
+    name: 📸 Visual Regression Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: 🗄️ Setup database
+        run: bundle exec rails db:create db:migrate RAILS_ENV=test
+
+      - name: 📸 Run visual regression tests
+        run: npm run test:visual
+
+      - name: 📊 Upload visual diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs
+          path: |
+            test-results/
+            **/*-diff.png
+          retention-days: 30
+
+  # ===========================================================================
+  # TEST REPORT AND NOTIFICATION
+  # ===========================================================================
+  report:
+    name: 📊 Generate Report
+    needs: [essential-tests, multi-browser, accessibility, performance, visual-regression]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: 📊 Generate combined report
+        run: |
+          echo "# 🧪 E2E Test Report" > report.md
+          echo "" >> report.md
+          echo "## Summary" >> report.md
+          echo "- Essential Tests: ${{ needs.essential-tests.result }}" >> report.md
+          echo "- Multi-Browser: ${{ needs.multi-browser.result }}" >> report.md
+          echo "- Accessibility: ${{ needs.accessibility.result }}" >> report.md
+          echo "- Performance: ${{ needs.performance.result }}" >> report.md
+          echo "- Visual Regression: ${{ needs.visual-regression.result }}" >> report.md
+
+      - name: 📝 Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('report.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: 💬 Notify Slack (on failure)
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "❌ E2E Tests Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ *E2E Tests Failed*\n\nBranch: `${{ github.ref }}`\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ===========================================================================
+  # CLEANUP
+  # ===========================================================================
+  cleanup:
+    name: 🧹 Cleanup
+    needs: report
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧹 Clean up old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const days = 30;
+            const date = new Date();
+            date.setDate(date.getDate() - days);
+
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            for (const artifact of artifacts.data.artifacts) {
+              if (new Date(artifact.created_at) < date) {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            }
