@@ -1,0 +1,55 @@
+{
+  "name": "once-campfire",
+  "version": "1.0.0",
+  "description": "Campfire is a web-based chat application. It supports many of the features you'd expect, including:",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:core": "playwright test e2e-tests/tests/01-core-flows.spec.js",
+    "test:markdown": "playwright test e2e-tests/tests/02-markdown-formatting.spec.js",
+    "test:chaos": "playwright test e2e-tests/tests/03-chaos-testing.spec.js",
+    "test:a11y": "playwright test e2e-tests/tests/04-accessibility.spec.js",
+    "test:performance": "playwright test e2e-tests/tests/05-performance.spec.js",
+    "test:realtime": "playwright test e2e-tests/tests/06-realtime-websockets.spec.js",
+    "test:visual": "playwright test e2e-tests/tests/07-visual-regression.spec.js",
+    "test:uploads": "playwright test e2e-tests/tests/08-file-uploads.spec.js",
+    "test:lighthouse": "playwright test e2e-tests/tests/09-lighthouse-audits.spec.js",
+    "test:mobile": "playwright test e2e-tests/tests/10-multi-browser-mobile.spec.js",
+    "test:essential": "playwright test e2e-tests/tests/01-core-flows.spec.js e2e-tests/tests/02-markdown-formatting.spec.js",
+    "test:advanced": "playwright test e2e-tests/tests/04-accessibility.spec.js e2e-tests/tests/05-performance.spec.js e2e-tests/tests/06-realtime-websockets.spec.js",
+    "test:browsers": "playwright test --project=chromium --project=firefox --project=webkit",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "test:parallel": "playwright test --workers=4",
+    "test:shard": "playwright test --shard=1/4",
+    "test:update-snapshots": "playwright test --update-snapshots",
+    "test:report": "playwright show-report",
+    "test:setup": "node e2e-tests/global-setup-auth.js",
+    "test:analytics": "node -e \"require('./e2e-tests/helpers/test-analytics').analytics.generateHTMLReport()\"",
+    "docker:build": "docker build -f Dockerfile.testing -t campfire-tests .",
+    "docker:test": "docker run --rm campfire-tests",
+    "docker:compose": "docker-compose -f docker-compose.test.yml up --build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:59928/git/aniruddhbk/once-campfire"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@faker-js/faker": "^10.1.0",
+    "@playwright/test": "^1.56.1",
+    "lighthouse": "^13.0.1",
+    "playwright-lighthouse": "^4.0.0"
+  }
+}

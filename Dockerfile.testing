@@ -1,0 +1,71 @@
+# 🐳 CAMPFIRE E2E TESTING DOCKER IMAGE
+# Professional containerized testing environment
+#
+# Usage:
+#   docker build -f Dockerfile.testing -t campfire-tests .
+#   docker run --rm campfire-tests
+
+FROM mcr.microsoft.com/playwright:v1.56.0-focal
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV RAILS_ENV=test
+ENV NODE_ENV=test
+ENV CI=true
+
+# Install Ruby and system dependencies
+RUN apt-get update && apt-get install -y \
+    ruby-full \
+    ruby-dev \
+    build-essential \
+    libsqlite3-dev \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bundler
+RUN gem install bundler -v '~> 2.0'
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node dependencies
+RUN npm ci
+
+# Install Playwright browsers (already in base image, but ensure latest)
+RUN npx playwright install --with-deps chromium firefox webkit
+
+# Copy Ruby dependency files
+COPY Gemfile Gemfile.lock ./
+
+# Install Ruby dependencies
+RUN bundle install --jobs=4 --retry=3
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p \
+    .auth \
+    e2e-tests/screenshots \
+    playwright-report \
+    test-results \
+    tmp/pids \
+    log
+
+# Set up test database
+RUN bundle exec rails db:create db:migrate RAILS_ENV=test || true
+
+# Run tests by default
+CMD ["npm", "test"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Metadata
+LABEL maintainer="Campfire Team"
+LABEL description="E2E Testing Environment for Campfire"
+LABEL version="2.0.0-ultra"
