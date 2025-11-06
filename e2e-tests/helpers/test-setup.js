@@ -72,35 +72,33 @@ async function seedTestData() {
 
     // Create a test user using Rails console
     const seedScript = `
-      # Create test user
-      user = User.find_or_create_by!(email_address: 'test@campfire.local') do |u|
-        u.name = 'Test User'
-        u.password = 'password123'
-        u.active = true
-        u.role = :member
-      end
+user = User.find_or_create_by!(email_address: 'test@campfire.local') do |u|
+  u.name = 'Test User'
+  u.password = 'password123'
+  u.active = true
+  u.role = :member
+end
 
-      # Create admin user
-      admin = User.find_or_create_by!(email_address: 'admin@campfire.local') do |u|
-        u.name = 'Admin User'
-        u.password = 'adminpass123'
-        u.active = true
-        u.role = :administrator
-      end
+admin = User.find_or_create_by!(email_address: 'admin@campfire.local') do |u|
+  u.name = 'Admin User'
+  u.password = 'adminpass123'
+  u.active = true
+  u.role = :administrator
+end
 
-      # Create account if needed
-      unless Account.exists?
-        Account.create!(name: 'Test Campfire')
-      end
+unless Account.exists?
+  Account.create!(name: 'Test Campfire')
+end
 
-      puts "Test data seeded successfully"
-      puts "Test user: test@campfire.local / password123"
-      puts "Admin user: admin@campfire.local / adminpass123"
-    `.trim();
+puts "Test data seeded successfully"
+puts "Test user: test@campfire.local / password123"
+puts "Admin user: admin@campfire.local / adminpass123"
+`;
 
-    execSync(`bundle exec rails runner "${seedScript}" RAILS_ENV=test`, {
+    execSync('RAILS_ENV=test bundle exec rails runner -', {
       cwd: path.join(__dirname, '../..'),
-      stdio: 'inherit'
+      input: seedScript,
+      stdio: ['pipe', 'inherit', 'inherit']
     });
 
     console.log('Test data seeded');
@@ -116,21 +114,16 @@ async function seedTestData() {
 async function cleanupTestData() {
   try {
     const cleanupScript = `
-      # Delete all messages
-      Message.delete_all
+Message.delete_all
+Room.where.not(name: ['General', 'Random']).delete_all
+User.where.not(email_address: ['test@campfire.local', 'admin@campfire.local']).delete_all
+puts "Cleanup complete"
+`;
 
-      # Delete all rooms except system rooms
-      Room.where.not(name: ['General', 'Random']).delete_all
-
-      # Reset user state
-      User.where.not(email_address: ['test@campfire.local', 'admin@campfire.local']).delete_all
-
-      puts "Cleanup complete"
-    `.trim();
-
-    execSync(`bundle exec rails runner "${cleanupScript}" RAILS_ENV=test`, {
+    execSync('RAILS_ENV=test bundle exec rails runner -', {
       cwd: path.join(__dirname, '../..'),
-      stdio: 'pipe'
+      input: cleanupScript,
+      stdio: ['pipe', 'pipe', 'pipe']
     });
   } catch (error) {
     // Silently handle cleanup errors to avoid breaking tests

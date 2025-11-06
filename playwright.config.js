@@ -7,7 +7,8 @@ module.exports = defineConfig({
   testDir: './e2e-tests/tests',
 
   // Global setup - runs once before all tests (with authentication state)
-  globalSetup: require.resolve('./e2e-tests/global-setup-auth.js'),
+  // Disabled temporarily to simplify testing
+  // globalSetup: require.resolve('./e2e-tests/global-setup-auth.js'),
 
   // Maximum time one test can run
   timeout: 60 * 1000,
@@ -55,6 +56,11 @@ module.exports = defineConfig({
 
     // Navigation timeout
     navigationTimeout: 30000,
+
+    // Browser launch options - disable sandbox for Docker/containers
+    launchOptions: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    },
   },
 
   // Configure projects for major browsers and devices
@@ -101,11 +107,11 @@ module.exports = defineConfig({
   // Note: For Rails app, you'll need to start the server manually
   // or configure this section to start the Rails server
   webServer: process.env.CI ? undefined : {
-    command: 'bundle exec rails server -e test -p 3000',
+    command: 'bin/rails server -p 3000',
     port: 3000,
     timeout: 120 * 1000,
-    reuseExistingServer: !process.env.CI,
-    stdout: 'pipe',
+    reuseExistingServer: true,  // Allow using existing server
+    stdout: 'ignore',
     stderr: 'pipe',
   },
 });
